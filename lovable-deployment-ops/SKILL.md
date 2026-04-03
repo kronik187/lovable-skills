@@ -341,6 +341,18 @@ This is a remote Chrome on a Mac accessed via CDP over SSH. Keyboard shortcuts g
 - **Hard refresh:** `browser_evaluate(() => location.reload(true))` — NOT Cmd+Shift+R
 - **Select all:** `browser_evaluate(() => { el.focus(); document.execCommand('selectAll'); })` — NOT Ctrl+A
 
+**Lovable queue behavior — messages queue when Lovable is busy:**
+Lovable queues incoming prompts when it is already processing a previous message or deploying a PR. Your message will show as "queued" in the sidebar — this is normal. Do NOT re-send.
+- **Before sending a prompt:** Check that Lovable is idle — no spinner, no "Evaluating..." text, no queued messages in the sidebar. Poll every 10 seconds via `browser_evaluate` until idle.
+- **If a queued message is stuck for >2 minutes** (common during PR deployments):
+  1. `browser_evaluate(() => location.reload(true))` — hard refresh
+  2. Wait 5 seconds
+  3. Click the **pause button** on the queue (chat sidebar)
+  4. Wait 2 seconds
+  5. Click the **play button** to resume
+  6. If still stuck after two attempts, set task to `blocked`
+- **NEVER re-send a prompt that is queued.** Duplicates cause conflicts.
+
 **MCP constraints:**
 - Maximum 30s per wait call (longer causes MCP timeout)
 - Element refs from `find` go stale after page interactions — always re-find immediately before clicking
