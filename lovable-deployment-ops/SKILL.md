@@ -318,19 +318,26 @@ This is a remote Chrome on a Mac accessed via CDP over SSH. Keyboard shortcuts g
 - Ctrl+C / Cmd+C → does NOT copy
 - Ctrl+A / Cmd+A → does NOT select all
 - Any Ctrl+/Cmd+/Alt+ combo → UNRELIABLE, do not use
-**RULE: Never send ANY keyboard shortcut. Use `browser_evaluate` with JavaScript for all non-typing actions.**
+**RULE: Never send ANY keyboard shortcut. Use `browser_evaluate` with JavaScript for ALL actions including text entry.**
 
-**Text input rules:**
-- **ALWAYS use JavaScript injection** to enter text in Lovable chat (or any rich input):
+**Text input rules — `browser_type` is BANNED:**
+- **NEVER use `browser_type`.** Not for short text, not for long text, not ever. It sends individual keystrokes which are slow, unreliable over CDP, and trigger TipTap's newline-as-submit bug.
+- **ALWAYS use `browser_evaluate` with JavaScript** to set text:
   ```javascript
+  // For Lovable chat (TipTap ProseMirror editor):
   const editor = document.querySelector('.tiptap.ProseMirror');
   editor.focus();
-  editor.innerHTML = '<p>Your prompt here. Use periods not newlines.</p>';
+  editor.innerHTML = '<p>Your entire prompt as a single line. Use periods not newlines. Never use line breaks.</p>';
   editor.dispatchEvent(new Event('input', { bubbles: true }));
+
+  // For standard <input> or <textarea> fields:
+  const input = document.querySelector('input[name="fieldname"]');
+  const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  nativeSetter.call(input, 'your value here');
+  input.dispatchEvent(new Event('input', { bubbles: true }));
   ```
   Then click the submit button via `browser_click`.
-- Never use newlines — TipTap treats Enter as a separate message submission
-- Use periods or semicolons to separate sentences
+- **ALL text must be a single `<p>` tag with no newlines.** TipTap treats any line break as a separate message submission. Use periods or semicolons as separators.
 - **Hard refresh:** `browser_evaluate(() => location.reload(true))` — NOT Cmd+Shift+R
 - **Select all:** `browser_evaluate(() => { el.focus(); document.execCommand('selectAll'); })` — NOT Ctrl+A
 
