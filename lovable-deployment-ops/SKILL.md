@@ -16,6 +16,24 @@ description: |
 
 Lovable is used exclusively as a **deployment and cloud operations platform** — not for writing code or implementing features. All development happens through Claude Code CLI. After a PR merges to `main`, Lovable handles deployment verification, migration execution, and cloud operations.
 
+## Pre-Flight: CDP Connectivity Check (MANDATORY before any browser task)
+
+Before attempting ANY Lovable browser interaction, run this check:
+
+```bash
+curl -s --connect-timeout 5 http://localhost:9222/json/version
+```
+
+**Expected response:** JSON with `Browser`, `webSocketDebuggerUrl` fields (Chrome on remote Mac via SSH tunnel).
+
+**If this fails:** The SSH tunnel (`chrome-cdp-tunnel.service`) is down. Do NOT attempt browser tasks. Set status to `blocked` and escalate: "CDP tunnel unreachable — board must restart chrome-cdp-tunnel.service on WSL."
+
+**If this succeeds but Playwright MCP tools still fail:**
+1. Verify MCP config: `cat ~/.claude/settings.json` — must have `mcpServers.playwright` with args `["-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://localhost:9222"]`
+2. Test MCP binary: `npx -y @playwright/mcp@latest --help`
+3. If both pass, try a simple `browser_navigate` to `https://example.com` as a connectivity test
+4. Only escalate as `blocked` if Step 1 or 2 fail — most Playwright MCP issues are transient
+
 ## Lovable's 6 Operational Responsibilities
 
 1. **Confirm PR has merged** — verify merge commit on `main` via GitHub
