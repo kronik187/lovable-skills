@@ -171,7 +171,7 @@ npm audit --audit-level=high
 ```
 
 **Browser verification:**
-1. Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)
+1. Hard refresh: `browser_evaluate(() => location.reload(true))` — NEVER use Cmd+Shift+R (keyboard shortcuts don't work over CDP)
 2. Navigate to the affected page
 3. Screenshot the result
 4. Check browser console for JavaScript errors
@@ -205,7 +205,7 @@ Code appears to be written but no commit exists in GitHub.
 
 ### Pattern 2: Stale Cache False Negative
 Code exists but Lovable's editor shows old version.
-- **Detect:** Hard refresh (Cmd+Shift+R), then search again. Or bypass browser entirely: `grep -r "TERM" ~/Desktop/<project>/`
+- **Detect:** Hard refresh via `browser_evaluate(() => location.reload(true))`, then search again. Or bypass browser entirely: `grep -r "TERM" ~/Desktop/<project>/`
 - **Recover:** Always hard refresh before verification. Prefer CLI over browser for code checks.
 
 ### Pattern 3: Self-Validating Verification
@@ -246,7 +246,7 @@ Real race condition (not a hallucination) causing duplicate rows from concurrent
 ### General Rules
 - **Evidence before claims.** "Should work" and "looks correct" are not evidence. Command output is evidence.
 - **GitHub diff is ground truth.** If it's not in the diff, it didn't happen.
-- **Hard refresh always.** Cmd+Shift+R before every browser-based verification.
+- **Hard refresh always.** `browser_evaluate(() => location.reload(true))` before every browser-based verification. NEVER use Cmd+Shift+R.
 - **Never rely solely on edge functions.** They are the least reliable deployment path.
 - **Prefer CLI over browser.** CLI bypasses cache, returns structured output, and is faster.
 
@@ -311,21 +311,28 @@ When using Claude in Chrome MCP tools to interact with Lovable's dashboard:
 - Submit button: click at (287, 494)
 - Approve button: ~(234, 387)
 
+**CRITICAL — Zero keyboard shortcuts over CDP:**
+This is a remote Chrome on a Mac accessed via CDP over SSH. Keyboard shortcuts get intercepted and trigger unintended actions:
+- Ctrl+D / Cmd+D → TOGGLES LOVABLE DARK/LIGHT THEME (not bookmark)
+- Ctrl+V / Cmd+V → does NOT paste (clipboard not shared over CDP)
+- Ctrl+C / Cmd+C → does NOT copy
+- Ctrl+A / Cmd+A → does NOT select all
+- Any Ctrl+/Cmd+/Alt+ combo → UNRELIABLE, do not use
+**RULE: Never send ANY keyboard shortcut. Use `browser_evaluate` with JavaScript for all non-typing actions.**
+
 **Text input rules:**
-- Never use newlines (`\n`) in `type` actions — each newline triggers a separate message submission (TipTap editor behavior)
-- Use periods or semicolons to separate sentences in a single message
-- **PREFERRED: Use JavaScript injection via `browser_evaluate` to set input text** — this is more reliable than `browser_type` for any length and bypasses all clipboard/keystroke/TipTap quirks:
+- **ALWAYS use JavaScript injection** to enter text in Lovable chat (or any rich input):
   ```javascript
-  // Find the Lovable chat input (TipTap ProseMirror editor)
   const editor = document.querySelector('.tiptap.ProseMirror');
   editor.focus();
-  // Set content directly (TipTap renders <p> tags)
-  editor.innerHTML = '<p>Your prompt text here. Use periods not newlines.</p>';
-  // Dispatch input event so TipTap registers the change
+  editor.innerHTML = '<p>Your prompt here. Use periods not newlines.</p>';
   editor.dispatchEvent(new Event('input', { bubbles: true }));
   ```
-  Then click the submit/send button.
-- **NEVER use Ctrl+V, Cmd+V, or any paste keyboard shortcut.** The clipboard is NOT shared between WSL and the remote Mac Chrome over CDP. Paste shortcuts trigger unintended Chrome actions (dark mode toggle, etc.).
+  Then click the submit button via `browser_click`.
+- Never use newlines — TipTap treats Enter as a separate message submission
+- Use periods or semicolons to separate sentences
+- **Hard refresh:** `browser_evaluate(() => location.reload(true))` — NOT Cmd+Shift+R
+- **Select all:** `browser_evaluate(() => { el.focus(); document.execCommand('selectAll'); })` — NOT Ctrl+A
 
 **MCP constraints:**
 - Maximum 30s per wait call (longer causes MCP timeout)
