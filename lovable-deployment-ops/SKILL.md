@@ -314,7 +314,18 @@ When using Claude in Chrome MCP tools to interact with Lovable's dashboard:
 **Text input rules:**
 - Never use newlines (`\n`) in `type` actions — each newline triggers a separate message submission (TipTap editor behavior)
 - Use periods or semicolons to separate sentences in a single message
-- For text over 2000 characters, use JavaScript clipboard paste instead of `type` action (keystroke simulation times out at 30s)
+- **PREFERRED: Use JavaScript injection via `browser_evaluate` to set input text** — this is more reliable than `browser_type` for any length and bypasses all clipboard/keystroke/TipTap quirks:
+  ```javascript
+  // Find the Lovable chat input (TipTap ProseMirror editor)
+  const editor = document.querySelector('.tiptap.ProseMirror');
+  editor.focus();
+  // Set content directly (TipTap renders <p> tags)
+  editor.innerHTML = '<p>Your prompt text here. Use periods not newlines.</p>';
+  // Dispatch input event so TipTap registers the change
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  ```
+  Then click the submit/send button.
+- **NEVER use Ctrl+V, Cmd+V, or any paste keyboard shortcut.** The clipboard is NOT shared between WSL and the remote Mac Chrome over CDP. Paste shortcuts trigger unintended Chrome actions (dark mode toggle, etc.).
 
 **MCP constraints:**
 - Maximum 30s per wait call (longer causes MCP timeout)
